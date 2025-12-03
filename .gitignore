@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.class
+.vscode/
+.idea/
+*.log
+.env
+Joern/
+libpng/
+legacy_experiments/
+*.json
+*.bin
+*.xml

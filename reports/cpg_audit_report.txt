@@ -1,0 +1,48 @@
+Loading CPG...
+
+=== Phase 1: The Inventory Audit (Nodes) ===
+Node Type                 | Count    | Status
+---------------------------------------------
+FILE                      | 98       | OK
+NAMESPACE_BLOCK           | 98       | OK
+TYPE_DECL                 | 2376     | OK
+METHOD                    | 2160     | OK
+METHOD_PARAMETER_IN       | 5472     | OK
+METHOD_RETURN             | 2160     | OK
+CALL                      | 13087    | OK
+IDENTIFIER                | 10736    | OK
+LITERAL                   | 8811     | OK
+BLOCK                     | 4361     | OK
+CONTROL_STRUCTURE         | 1767     | OK
+
+Method Name Check: 2160/2160 methods have NAME property.
+Status: PASS
+
+=== Phase 2: The Connectivity Audit (Edges) ===
+AST Edges: 37837
+AST Node Coverage: 54.03% (Expect high, but Root/Files have no incoming AST)
+CFG Edges: 2292
+CALL -> CALL CFG Edges: 174
+Status: PASS (Execution Order)
+REACHING_DEF Edges: 109991
+Identifier RD Coverage: 98.19%
+Status: PASS (Data Dependencies)
+CALL Edges (Interprocedural): 13062
+CALL -> METHOD Edges: 13062
+Status: PASS (Interprocedural Link)
+
+=== Phase 3: The Gap Audit (Missing Links) ===
+ARGUMENT -> METHOD_PARAMETER_IN: 0 (Expect Missing)
+METHOD_RETURN -> CALL: 358 (Expect Missing)
+POINTS_TO Edges: 0 (Expect Sparse/Missing)
+
+=== Phase 4: The Property Audit (Fidelity) ===
+Source Mapping (Line/Col): 23820/23823 (99.99%)
+Original Code (CODE): 23823/23823 (100.00%)
+Type Coverage (TYPE_FULL_NAME): 23823/23823 (100.00%)
+
+=== Phase 5: Structural Integrity ===
+Orphan Nodes (No incoming AST): 75
+Status: WARNING
+Methods without Body (BLOCK): 1751
+Status: WARNING
