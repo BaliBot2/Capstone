@@ -1,20 +1,45 @@
-# Bali-God: 2-Agent CPG Analysis System
+# Semantic Guided Agentic Navigation for Program Comprehension
 
-**Bali-God** is an advanced static analysis tool that uses a **Code Property Graph (CPG)** and a **2-Agent LLM Architecture** to debug and analyze C/C++ codebases (specifically `libpng`).
+**Aditya Bali**  
+Ashoka University  
+aditya.bali@ashoka.edu.in  
 
-## 🚀 Key Features
+**Viom Kapur**  
+Ashoka University  
+viom.kapur@ashoka.edu.in  
 
--   **2-Agent Architecture**:
-    -   **Lead Agent**: A "Ruthless Architect" that plans investigations using strict JSON commands.
-    -   **Scout Agent**: A "Data Extractor" that navigates the graph using structural tools.
--   **Graph-Native Tools**:
-    -   `trace_data_flow`: Multi-hop taint analysis.
-    -   `get_file_skeleton`: "Virtual Header" generation (no raw code reading).
-    -   `search_codebase`: "Writers Search" for assignments.
--   **Optimized Workflow**:
-    -   **Query Rephraser**: Translates vague symptoms into technical directives.
-    -   **Forced Landing**: Guarantees an answer within 4 turns.
-    -   **Dual Logging**: Full session traces in `agent_system/agent_session.log`.
+**December 3, 2025**
+
+## 1. Introduction
+We propose **Semantic Guided Efficient Navigation**, a Hybrid Agentic Architecture that mimics a senior developer’s workflow by treating modules as "black boxes" and only inspecting specific logic when necessary. This solution constructs a **Code Property Graph (CPG)**—fusing Abstract Syntax Trees (AST), Control Flow Graphs (CFG), and Program Dependence Graphs (PDG) with Steensgaard’s pointer analysis—to serve as a structural foundation for a **2-Agent System**:
+*   **Scout**: Navigates high-level "skeleton" abstractions to conserve context.
+*   **Lead**: Executes precise graph traversals to fetch source code only when explicitly directed.
+
+## 2. Background
+Legacy software systems, particularly those architected in low-level languages like C and C++, constitute the immutable bedrock of critical global infrastructure. For modern maintainers, the primary bottleneck shifts from writing new code to comprehending this "cluttered mass" of existing logic. Standard "Chat with Code" LLM approaches fail due to:
+*   **Context Explosion**: Repositories far exceed token limits (e.g., Linux Kernel is ~400M tokens).
+*   **Structural Blindness**: LLMs treat code as flat text, hallucinating connections that violate rigid control flow and memory aliasing rules.
+
+## 3. Methodology
+### Static Code Analysis & CPG
+We utilize a **Code Property Graph (CPG)** as the comprehensive unified representation, merging AST, CFG, and PDG.
+*   **Base Generation**: Uses Joern to generate the initial CPG.
+*   **Enrichment**: We implemented a custom **Steensgaard’s Points-To Analysis** (O(Nα(N))) to add explicit `POINTS_TO` edges, allowing agents to "see" through indirect memory accesses (pointer aliasing).
+
+### Neuro-Cognitive Architecture
+A **Dual-Agent Cognitive Loop** separates planning from perception:
+1.  **The Router ("Shift Left")**: Intercepts user queries, classifies intent (DEBUG, EXPLAIN, LOGIC, ARCHITECTURE, DESIGN), and translates them into precise Technical Directives.
+2.  **The Lead Agent (Planner)**: Formulates a Chain of Thought (CoT) and issues commands. It does not look at raw code directly.
+3.  **The Scout Agent (Perception)**: Executes graph tools (`trace_data_flow`, `get_file_skeleton`, `search_codebase`) to retrieve factual topological data.
+
+## 4. Results
+The system was evaluated on the `libpng` codebase (70k+ nodes, 498k+ edges).
+*   **Success Rate**: 100% on 7 test queries across LOGIC, DESIGN, and DEBUG modes.
+*   **Efficiency**: Average response time of 59.0s.
+*   **Accuracy**: 85.7% accuracy with 100% recall against ground truth criteria.
+*   **Key Findings**: The system successfully identifies complex bugs (e.g., buffer overflows, memory leaks) and architectural patterns (e.g., Strategy Pattern) by tracing data flow across function boundaries, preventing hallucinations common in text-only RAG.
+
+---
 
 ## 📂 Project Structure
 
