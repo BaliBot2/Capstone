@@ -11,3 +11,4 @@ legacy_experiments/
 *.json
 *.bin
 *.xml
+SCAST/

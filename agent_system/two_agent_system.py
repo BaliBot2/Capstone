@@ -63,6 +63,26 @@ def summarize_neighborhood_tool(node_id: str, radius: int = 1):
     """Summarizes the local graph neighborhood."""
     return cpg_service.summarize_neighborhood(node_id, int(radius))
 
+def analyze_structural_patterns_tool(file_node_id: str):
+    """Scans for C design idioms (Opaque Pointers, VTables) to infer intent."""
+    return cpg_service.analyze_structural_patterns(file_node_id)
+
+def extract_business_rules_tool(variable_name: str, context_function: str):
+    """Extracts 'Business Logic' by finding constraints (IF checks) on a variable."""
+    return cpg_service.extract_business_rules(variable_name, context_function)
+
+def analyze_architecture_layers_tool(file_query: str):
+    """Determines if a file is 'Low Level' (Driver) or 'High Level' (Logic)."""
+    return cpg_service.analyze_architecture_layers(file_query)
+
+def identify_design_patterns_tool(function_name: str):
+    """Scans for C idioms like Function Pointers, Void* Context, Singleton."""
+    return cpg_service.identify_design_patterns(function_name)
+
+def map_feature_cluster_tool(feature_seed_name: str):
+    """Maps a 'Feature' to code by following Data Clusters."""
+    return cpg_service.map_feature_cluster(feature_seed_name)
+
 scout_tools = [
     search_codebase_tool,
     read_function_code_tool,
@@ -70,7 +90,12 @@ scout_tools = [
     get_file_skeleton_tool,
     trace_data_flow_tool,
     trace_control_flow_tool,
-    summarize_neighborhood_tool
+    summarize_neighborhood_tool,
+    analyze_structural_patterns_tool,
+    extract_business_rules_tool,
+    analyze_architecture_layers_tool,
+    identify_design_patterns_tool,
+    map_feature_cluster_tool
 ]
 
 def rephrase_query(user_input):
@@ -78,31 +103,27 @@ def rephrase_query(user_input):
     Refines a vague user symptom into a precise technical directive 
     for the Static Analysis Agents.
     """
-    print(f"\n[System]: Rephrasing query: '{user_input}'...")
+    print(f"\n[System]: Analyzing intent for: '{user_input}'...")
     
     model = genai.GenerativeModel('gemini-2.0-flash')
     
     prompt = f"""
-    You are a Senior C Developer. 
-    Translate the user's vague bug report into a PRECISE, GRAPH-NATIVE investigation plan.
+    You are a Technical Lead. Classify the user query into one of 5 MODES and generate a technical directive.
     
-    Use the following mapping logic:
-    - "Crash/Segfault" -> Check for NULL pointers, Use-After-Free, or Buffer Overflow.
-    - "Garbage Output" -> Trace data flow backwards from output to origin (Taint Analysis).
-    - "Stuck/Slow" -> Check loop termination conditions and lock acquisitions.
-    - "Memory Leak" -> Check malloc/free pairing in the relevant scope.
-
-    Output a single, dense sentence containing:
-    1. Likely Function Name (guess based on standard naming conventions if not given, e.g., 'read_row', 'parse_header').
-    2. Specific variables to trace.
-    3. Specific check to perform.
-
-    Examples:
-    User: "The image parser crashes on bad headers."
-    Output: Inspect `png_read_header` and `png_read_info`. Trace `length` variables for buffer overflows. Check `png_ptr` for NULL before dereference.
-
-    User: "Why is the output image all black?"
-    Output: Trace the data flow of the pixel buffer in `png_combine_row`. Check for uninitialized memory or zeroed-out palette indices.
+    1. MODE: DEBUG (Crash, error, bug) -> Inspect [Function] for [Error].
+    2. MODE: EXPLAIN (Purpose, summary) -> Summarize [File].
+    
+    3. MODE: LOGIC (Rules, constraints, invariants)
+       - Keywords: "What are the rules for...", "Can X be null?", "Constraints on..."
+       - Directive: Extract Business Rules for [Variable] in [Function]. Identify invariants.
+       
+    4. MODE: ARCHITECTURE (Layers, structure, coupling)
+       - Keywords: "High level view", "Architecture", "Dependencies"
+       - Directive: Analyze Architecture Layers for [Module]. Check Fan-In/Fan-Out.
+       
+    5. MODE: DESIGN (Patterns, why this way)
+       - Keywords: "Design pattern", "Why pointer?", "Strategy"
+       - Directive: Identify Design Patterns in [Function]. Check for Polymorphism (Function Pointers) or Encapsulation.
 
     User: "{user_input}"
     Output:
@@ -125,29 +146,23 @@ class ScoutAgent:
             model_name='gemini-2.0-flash',
             tools=scout_tools,
             system_instruction="""
-            You are a Data Retrieval Unit. NOT an assistant.
-            
+            Role: Data Retrieval Unit.
             RULES:
-            1. Do NOT speak. Do NOT explain why you are searching.
-            2. Call the tool immediately.
-            3. If a tool fails, try a different query immediately.
-            4. Your final text output should be a SUMMARY of the findings, not a narrative.
+            1. NO conversational filler.
+            2. Call tools immediately.
+            3. Retry on failure.
+            4. Output: SUMMARY of findings.
             
-            Example Output:
-            "FOUND: function png_read_row at node #123.
-             DATA_FLOW: row_buf -> memcpy -> row_pointers.
-             ALERT: pointer 'row_buf' aliases with global 'png_ptr'."
-             
-            SEARCH STRATEGY:
-            - If asked "How is variable X set?", use `search_codebase` with the query "X =" or "X ->".
-            - Do not restrict yourself to the current function.
+            STRATEGY:
+            - "How is X set?" -> `search_codebase("X =")`.
+            - Design/Arch -> `analyze_structural_patterns`.
             """
         )
         self.chat = self.model.start_chat(enable_automatic_function_calling=True)
 
     def ask(self, prompt):
         # We append a directive to every prompt to enforce brevity
-        full_prompt = f"{prompt} \n(Provide FACTUAL DATA ONLY. No conversational filler.)"
+        full_prompt = f"{prompt} \n(FACTUAL DATA ONLY. NO FILLER.)"
         response = self.chat.send_message(full_prompt)
         logger.log(f"    [Scout Token Usage]: {response.usage_metadata}")
         return response.text
@@ -160,21 +175,32 @@ class LeadAgent:
             # NO tools passed here. We handle logic manually via JSON.
             generation_config={"response_mime_type": "application/json"},
             system_instruction="""
-            You are a "Rapid Response" Code Architect.
+            Role: "Comprehension Engine" Code Architect.
+            Constraint: 3 MOVES max.
             
-            CRITICAL CONSTRAINT: You have exactly 3 MOVES to solve the problem.
+            PROTOCOL FOR 'MODE: LOGIC':
+            1. Goal: Extract Business Rules (Invariants).
+            2. Behavior: Ask Scout to `extract_business_rules` for key variables.
+            3. Final Output: A list of "Must be True" conditions (e.g., "Width must be > 0").
             
-            PROTOCOL:
-            1. BATCH REQUESTS: Do not ask for one thing. Ask the Scout to check the Function, its Error Handling, AND its Data Flow in a single instruction.
-            2. GUESS EARLY: If you see a "likely" cause (e.g., a missing check), declare it as the answer. Do not verify every edge case.
-            3. IGNORE DEEP DEPTH: Do not trace more than 1 level deep unless critical.
+            PROTOCOL FOR 'MODE: DESIGN':
+            1. Goal: Infer Architect Intent.
+            2. Behavior: Ask Scout to `identify_design_patterns` and `map_feature_cluster`.
+            3. Final Output: Explain the "Why" (e.g., "Used function pointers to decouple IO logic").
+            
+            PROTOCOL FOR 'MODE: DEBUG':
+            1. Goal: Find Bugs.
+            2. Behavior: Trace Data Flow + Error Handling.
+            3. Final Output: The Bug + Fix.
+
+            GENERAL RULES:
+            - BATCH: Check Function + Error Handling + Data Flow in one go.
+            - GUESS: Declare bug or pattern early.
+            - DEPTH: Max 1 level deep.
+            - VERBOSE: The Final Answer must be detailed and explain the reasoning.
             
             JSON OUTPUT:
-            {
-                "thought": "Reasoning...",
-                "command": "ASK_SCOUT" or "FINISH",
-                "payload": "Compound instruction for Scout OR Final Answer"
-            }
+            { "thought": "...", "command": "ASK_SCOUT"|"FINISH", "payload": "..." }
             """
         )
         self.chat = self.model.start_chat()
@@ -234,10 +260,10 @@ class LeadAgent:
                     logger.log(f"  > Batch Dispatch: {payload}")
                     
                     # Rate Limit Sleep (Crucial for Free Tier)
-                    time.sleep(4) 
+                    time.sleep(10) 
                     
                     scout_result = self.scout.ask(payload)
-                    clean_result = scout_result[:3000] # Increased context slightly for batching
+                    clean_result = scout_result[:1500] # Reduced to 1500 to save tokens
                     logger.log(f"  < Scout Returned: {len(clean_result)} chars.")
                     
                     response = self.chat.send_message(
@@ -256,7 +282,7 @@ if __name__ == "__main__":
     lead = LeadAgent(scout)
     
     # 2. Get User Input
-    raw_query = "can you explain the purpose of the file readpng2.c?"
+    raw_query = "Identify design patterns in png_create_read_struct"
     
     # 3. The "Shift Left" Optimization
     technical_query = rephrase_query(raw_query)
